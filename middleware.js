@@ -1,30 +1,41 @@
+// middleware.js
+
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+
+// 🛑 HARDCODED KEYS (not recommended in production)
+const clerkConfig = {
+  secretKey: "sk_test_hCXaN0HYWdMBQZQ1iY7XF6xHPkg70eeaCvWD9XSeOV",
+  publishableKey: "pk_test_YWN0aXZlLWZsYW1pbmdvLTE3LmNsZXJrLmFjY291bnRzLmRldiQ"
+  
+};
+
+const middleware = clerkMiddleware({
+  ...clerkConfig
+});
 
 const isProtectedRoute = createRouteMatcher([
   "/dashboard(.*)",
   "/resume(.*)",
   "/interview(.*)",
   "/ai-cover-letter(.*)",
-  "/onboarding(.*)",
+  "/onboarding(.*)"
 ]);
 
-export default clerkMiddleware(async (auth, req) => {
+export default middleware(async (auth, req) => {
   const { userId } = await auth();
 
-  if (!userId && isProtectedRoute(req)) {
-    const { redirectToSignIn } = await auth();
-    return redirectToSignIn();
+  if (userId || !isProtectedRoute(req)) {
+    return NextResponse.next();
   }
 
-  return NextResponse.next();
+  const { redirectToSignIn } = await auth();
+  return redirectToSignIn();
 });
 
 export const config = {
   matcher: [
-    // Skip Next.js internals and all static files, unless found in search params
-    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    // Always run for API routes
-    "/(api|trpc)(.*)",
-  ],
+    "/((?!.*\\..*|_next).*)",  // ignore _next/** and public files
+    "/(api|trpc)(.*)"          // match APIs too
+  ]
 };
